@@ -40,13 +40,23 @@ function onDone() {
 }
 function loadImages(pathFn, count) {
   const list = [];
+
   for (let i = 0; i < count; i++) {
+
     const img = new Image();
+
     img.onload = onDone;
-    img.onerror = onDone;                 // never get stuck on a missing file
+
+    img.onerror = () => {
+      console.error("FAILED TO LOAD:", img.src);
+      onDone();
+    };
+
     img.src = pathFn(i);
+
     list.push(img);
   }
+
   return list;
 }
 const frames = loadImages(i => `frames/f_${String(i + 1).padStart(4, "0")}.jpg`, TOTAL_FRAMES);
@@ -54,9 +64,23 @@ const eyes = loadImages(i => `eyes/eye_${i}.jpg`, EYE_COUNT);
 
 function drawCover(ctx, canvas, img) {
   if (!img || !img.complete || !img.naturalWidth) return;
-  const s = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
-  const w = img.naturalWidth * s, h = img.naturalHeight * s;
-  ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+
+  const s = Math.max(
+    canvas.width / img.naturalWidth,
+    canvas.height / img.naturalHeight
+  );
+
+  const w = img.naturalWidth * s;
+  const h = img.naturalHeight * s;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(
+    img,
+    (canvas.width - w) / 2,
+    (canvas.height - h) / 2,
+    w,
+    h
+  );
 }
 
 // ====================================================================
@@ -76,9 +100,12 @@ function onScroll() {
   scrollP = p;
   const idx = Math.min(TOTAL_FRAMES - 1, Math.floor(p * TOTAL_FRAMES));
   if (idx !== currentFrame) {
-    currentFrame = idx;
-    requestAnimationFrame(() => drawCover(mainCtx, mainCanvas, frames[currentFrame]));
-  }
+  currentFrame = idx;
+}
+
+requestAnimationFrame(() => {
+  drawCover(mainCtx, mainCanvas, frames[currentFrame]);
+});
 
   // captions: only while the scroll animation is pinned on screen
   const rect = scrubSection.getBoundingClientRect();
