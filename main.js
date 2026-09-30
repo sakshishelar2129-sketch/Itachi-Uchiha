@@ -1,1709 +1,190 @@
-```javascript
 /* ============================================================
    ITACHI UCHIHA WEBSITE
    ============================================================
 
-   FEATURES:
+   FEATURES
    - 150 frame scroll animation
    - No zoom while scrolling
    - Sharingan follows mouse
-   - Automatic blinking
-   - Itachi music
+   - Natural automatic blinking
+   - Itachi audio
    - Black flames
    - Crow feathers
    - Lightning effects
    - Custom Sharingan cursor
    ============================================================ */
 
-
-/* ============================================================
-   SETTINGS
-   ============================================================ */
-
-const TOTAL_FRAMES = 150;
+const FRAME_COUNT = 150;
 const EYE_COUNT = 9;
 
-const REDUCED_MOTION =
-  window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  ).matches;
+const frameImages = [];
+const eyeImages = [];
+
+let loadedImages = 0;
+const totalImages = FRAME_COUNT + EYE_COUNT;
+
+let currentFrame = 0;
+let targetFrame = 0;
+
+let mouseX = window.innerWidth / 2;
+let mouseY = window.innerHeight / 2;
+
+let eyeX = window.innerWidth / 2;
+let eyeY = window.innerHeight / 2;
+
+let blinkTimer = null;
+let blinking = false;
+
+let windForce = 0;
+let animationStarted = false;
 
 
 /* ============================================================
    HTML ELEMENTS
    ============================================================ */
 
-const scrubSection =
-  document.getElementById("scrub");
+const loader = document.getElementById("loader");
+const loaderPct = document.getElementById("loaderPct");
+const loaderFill = document.getElementById("loaderFill");
 
-const mainCanvas =
-  document.getElementById("mainCanvas");
+const scrubSection = document.getElementById("scrub");
+const mainCanvas = document.getElementById("mainCanvas");
+const eyeCanvas = document.getElementById("eyeCanvas");
 
-const mainCtx =
-  mainCanvas.getContext("2d");
+const flameCanvas = document.getElementById("flameCanvas");
+const featherCanvas = document.getElementById("featherCanvas");
 
-const eyeCanvas =
-  document.getElementById("eyeCanvas");
+const bgMusic = document.getElementById("bgMusic");
+const soundToggle = document.getElementById("soundToggle");
 
-const eyeCtx =
-  eyeCanvas.getContext("2d");
+const cursor = document.getElementById("cursor");
+const cursorDot = document.getElementById("cursorDot");
 
-const captions =
-  document.getElementById("captions");
+const mainCtx = mainCanvas ? mainCanvas.getContext("2d") : null;
+const eyeCtx = eyeCanvas ? eyeCanvas.getContext("2d") : null;
 
-const phases =
-  document.querySelectorAll(".phase");
-
-const loader =
-  document.getElementById("loader");
-
-const loaderPct =
-  document.getElementById("loaderPct");
-
-const loaderFill =
-  document.getElementById("loaderFill");
-
-const bgMusic =
-  document.getElementById("bgMusic");
-
-const soundToggle =
-  document.getElementById("soundToggle");
-
-const soundState =
-  document.getElementById("soundState");
-
-const flameCanvas =
-  document.getElementById("flameCanvas");
-
-const featherCanvas =
-  document.getElementById("featherCanvas");
-
-const flameCtx =
-  flameCanvas.getContext("2d");
-
-const featherCtx =
-  featherCanvas.getContext("2d");
-
-const cursor =
-  document.getElementById("cursor");
-
-const cursorDot =
-  document.getElementById("cursorDot");
-
-
-/* ============================================================
-   BASIC HELPERS
-   ============================================================ */
-
-function clamp(value, min, max) {
-
-  return Math.min(
-    max,
-    Math.max(min, value)
-  );
-
-}
+const flameCtx = flameCanvas ? flameCanvas.getContext("2d") : null;
+const featherCtx = featherCanvas
+  ? featherCanvas.getContext("2d")
+  : null;
 
 
 /* ============================================================
    IMAGE LOADING
    ============================================================ */
 
-let loadedImages = 0;
-
-const totalImages =
-  TOTAL_FRAMES + EYE_COUNT;
-
-
-function updateLoader() {
+function imageLoaded() {
 
   loadedImages++;
 
-  const percent =
-    Math.round(
-      (loadedImages / totalImages) * 100
-    );
+  const percentage = Math.round(
+    (loadedImages / totalImages) * 100
+  );
 
   if (loaderPct) {
-    loaderPct.textContent = percent;
+    loaderPct.textContent = percentage + "%";
   }
 
   if (loaderFill) {
-    loaderFill.style.width =
-      percent + "%";
+    loaderFill.style.width = percentage + "%";
   }
 
   if (
-    loadedImages >= totalImages
+    loadedImages >= totalImages &&
+    !animationStarted
   ) {
-
     startSite();
-
   }
-
 }
 
 
-function loadImages(
-  pathFunction,
-  count
-) {
+function loadImages() {
 
-  const images = [];
+  for (let i = 1; i <= FRAME_COUNT; i++) {
 
-  for (
-    let i = 0;
-    i < count;
-    i++
-  ) {
+    const img = new Image();
 
-    const image =
-      new Image();
+    const number = String(i).padStart(4, "0");
 
-    image.onload =
-      updateLoader;
+    img.onload = imageLoaded;
 
-    image.onerror =
-      function () {
-
-        console.error(
-          "Could not load:",
-          image.src
-        );
-
-        updateLoader();
-
-      };
-
-    image.src =
-      pathFunction(i);
-
-    images.push(image);
-
-  }
-
-  return images;
-
-}
-
-
-/* ============================================================
-   LOAD ITACHI FRAMES
-   ============================================================ */
-
-const frames =
-  loadImages(
-    function (i) {
-
-      const number =
-        String(i + 1)
-          .padStart(4, "0");
-
-      return (
-        "frames/f_" +
-        number +
-        ".jpg"
+    img.onerror = function () {
+      console.error(
+        "Could not load frame:",
+        `frames/f_${number}.jpg`
       );
 
-    },
-    TOTAL_FRAMES
-  );
+      imageLoaded();
+    };
+
+    img.src = `frames/f_${number}.jpg`;
+
+    frameImages.push(img);
+  }
 
 
-/* ============================================================
-   LOAD SHARINGAN EYE IMAGES
-   ============================================================ */
+  for (let i = 0; i < EYE_COUNT; i++) {
 
-const eyes =
-  loadImages(
-    function (i) {
+    const img = new Image();
 
-      return (
-        "eyes/eye_" +
-        i +
-        ".jpg"
+    img.onload = imageLoaded;
+
+    img.onerror = function () {
+      console.error(
+        "Could not load eye:",
+        `eyes/eye_${i}.jpg`
       );
 
-    },
-    EYE_COUNT
-  );
+      imageLoaded();
+    };
 
+    img.src = `eyes/eye_${i}.jpg`;
 
-/* ============================================================
-   DRAW IMAGE WITHOUT ZOOMING
-   ============================================================ */
-
-function drawImageCover(
-  context,
-  canvas,
-  image
-) {
-
-  if (
-    !image ||
-    !image.complete ||
-    !image.naturalWidth
-  ) {
-
-    return;
-
+    eyeImages.push(img);
   }
-
-
-  context.clearRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-
-  const scale =
-    Math.max(
-      canvas.width /
-        image.naturalWidth,
-
-      canvas.height /
-        image.naturalHeight
-    );
-
-
-  const width =
-    image.naturalWidth *
-    scale;
-
-  const height =
-    image.naturalHeight *
-    scale;
-
-
-  const x =
-    (canvas.width - width) /
-    2;
-
-  const y =
-    (canvas.height - height) /
-    2;
-
-
-  context.drawImage(
-    image,
-    x,
-    y,
-    width,
-    height
-  );
-
 }
 
 
 /* ============================================================
-   SCROLL ANIMATION
+   CANVAS RESIZE
    ============================================================ */
 
-let currentFrame = 0;
+function resizeCanvas(canvas) {
 
-let scrollProgress = 0;
+  if (!canvas) return;
 
-let lastScrollY =
-  window.scrollY;
-
-
-function getScrollProgress() {
-
-  const rect =
-    scrubSection.getBoundingClientRect();
-
-  const totalScroll =
-    scrubSection.offsetHeight -
-    window.innerHeight;
-
-
-  if (totalScroll <= 0) {
-
-    return 0;
-
-  }
-
-
-  return clamp(
-    -rect.top / totalScroll,
-    0,
-    1
+  const dpr = Math.min(
+    window.devicePixelRatio || 1,
+    2
   );
 
-}
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
 
+  canvas.style.width = window.innerWidth + "px";
+  canvas.style.height = window.innerHeight + "px";
 
-function updateScroll() {
+  const ctx = canvas.getContext("2d");
 
-  scrollProgress =
-    getScrollProgress();
-
-
-  /*
-     IMPORTANT:
-
-     Scroll changes ONLY the frame.
-
-     There is no:
-     scale()
-     zoom
-     translate
-     camera movement
-  */
-
-  currentFrame =
-    Math.min(
-      TOTAL_FRAMES - 1,
-      Math.floor(
-        scrollProgress *
-        TOTAL_FRAMES
-      )
-    );
-
-
-  drawImageCover(
-    mainCtx,
-    mainCanvas,
-    frames[currentFrame]
-  );
-
-
-  /* ----------------------------------------------------------
-     Captions
-     ---------------------------------------------------------- */
-
-  const rect =
-    scrubSection.getBoundingClientRect();
-
-
-  if (captions) {
-
-    captions.classList.toggle(
-      "show",
-      rect.top <= 0 &&
-      rect.bottom >=
-        window.innerHeight - 60
-    );
-
-  }
-
-
-  const phaseNumber =
-    Math.min(
-      3,
-      Math.floor(
-        scrollProgress * 4
-      )
-    );
-
-
-  phases.forEach(
-    function (phase, index) {
-
-      phase.classList.toggle(
-        "active",
-        index === phaseNumber
-      );
-
-    }
-  );
-
-
-  /* ----------------------------------------------------------
-     Feather wind from scrolling
-     ---------------------------------------------------------- */
-
-  const movement =
-    window.scrollY -
-    lastScrollY;
-
-
-  lastScrollY =
-    window.scrollY;
-
-
-  windForce +=
-    clamp(
-      movement,
-      -80,
-      80
-    );
-
-}
-
-
-window.addEventListener(
-  "scroll",
-  updateScroll,
-  {
-    passive: true
-  }
-);
-
-
-/* ============================================================
-   MOUSE POSITION
-   ============================================================ */
-
-let mouseX =
-  window.innerWidth / 2;
-
-let mouseY =
-  window.innerHeight / 2;
-
-
-/* ============================================================
-   SHARINGAN EYE POSITION
-   ============================================================ */
-
-let eyePosition =
-  (EYE_COUNT - 1) / 2;
-
-let eyeTarget =
-  eyePosition;
-
-
-window.addEventListener(
-  "mousemove",
-  function (event) {
-
-    mouseX =
-      event.clientX;
-
-    mouseY =
-      event.clientY;
-
-
-    /*
-       Cursor LEFT:
-       eye 0
-
-       Cursor CENTER:
-       eye 4
-
-       Cursor RIGHT:
-       eye 8
-    */
-
-    const horizontal =
-      clamp(
-        event.clientX /
-          window.innerWidth,
-        0,
-        1
-      );
-
-
-    eyeTarget =
-      horizontal *
-      (EYE_COUNT - 1);
-
-  }
-);
-
-
-/* ============================================================
-   TOUCH SUPPORT
-   ============================================================ */
-
-window.addEventListener(
-  "touchmove",
-  function (event) {
-
-    if (
-      !event.touches ||
-      !event.touches.length
-    ) {
-
-      return;
-
-    }
-
-
-    mouseX =
-      event.touches[0].clientX;
-
-    mouseY =
-      event.touches[0].clientY;
-
-
-    const horizontal =
-      clamp(
-        mouseX /
-          window.innerWidth,
-        0,
-        1
-      );
-
-
-    eyeTarget =
-      horizontal *
-      (EYE_COUNT - 1);
-
-  },
-  {
-    passive: true
-  }
-);
-
-
-/* ============================================================
-   BLINK SYSTEM
-   ============================================================ */
-
-let isBlinking = false;
-
-let blinkAmount = 0;
-
-let blinkStart = 0;
-
-let nextBlink =
-  performance.now() +
-  3000 +
-  Math.random() * 4000;
-
-
-const BLINK_TIME = 160;
-
-
-function startBlink() {
-
-  if (isBlinking) {
-
-    return;
-
-  }
-
-
-  isBlinking = true;
-
-  blinkAmount = 0;
-
-  blinkStart =
-    performance.now();
-
-}
-
-
-function updateBlink(time) {
-
-  /*
-     Blink happens automatically.
-
-     It has NOTHING to do with
-     mouse movement.
-  */
-
-  if (
-    !isBlinking &&
-    time >= nextBlink
-  ) {
-
-    startBlink();
-
-  }
-
-
-  if (!isBlinking) {
-
-    return;
-
-  }
-
-
-  blinkAmount =
-    (time - blinkStart) /
-    BLINK_TIME;
-
-
-  if (
-    blinkAmount >= 1
-  ) {
-
-    isBlinking = false;
-
-    blinkAmount = 0;
-
-
-    /*
-       Random next blink.
-
-       Approximately every
-       3–7 seconds.
-    */
-
-    nextBlink =
-      time +
-      2800 +
-      Math.random() * 4500;
-
-  }
-
-}
-
-
-/* ============================================================
-   DRAW SHARINGAN EYES
-   ============================================================ */
-
-function drawEyes() {
-
-  eyeCtx.clearRect(
-    0,
-    0,
-    eyeCanvas.width,
-    eyeCanvas.height
-  );
-
-
-  /*
-     Find the closest eye image.
-  */
-
-  const index =
-    clamp(
-      Math.round(eyePosition),
-      0,
-      EYE_COUNT - 1
-    );
-
-
-  const image =
-    eyes[index];
-
-
-  if (
-    !image ||
-    !image.complete ||
-    !image.naturalWidth
-  ) {
-
-    return;
-
-  }
-
-
-  /*
-     Draw the eye normally.
-  */
-
-  const scale =
-    Math.max(
-      eyeCanvas.width /
-        image.naturalWidth,
-
-      eyeCanvas.height /
-        image.naturalHeight
-    );
-
-
-  const width =
-    image.naturalWidth *
-    scale;
-
-  const height =
-    image.naturalHeight *
-    scale;
-
-
-  const x =
-    (eyeCanvas.width - width) /
-    2;
-
-  const y =
-    (eyeCanvas.height - height) /
-    2;
-
-
-  /*
-     Blink animation.
-
-     The eye becomes darker in the
-     middle of the blink and returns
-     immediately afterward.
-  */
-
-  let eyeAlpha = 1;
-
-
-  if (isBlinking) {
-
-    const closing =
-      Math.sin(
-        blinkAmount *
-        Math.PI
-      );
-
-
-    eyeAlpha =
-      1 -
-      closing;
-
-  }
-
-
-  eyeCtx.globalAlpha =
-    eyeAlpha;
-
-
-  eyeCtx.drawImage(
-    image,
-    x,
-    y,
-    width,
-    height
-  );
-
-
-  eyeCtx.globalAlpha = 1;
-
-
-  /*
-     Small dark eyelid effect.
-  */
-
-  if (isBlinking) {
-
-    const closing =
-      Math.sin(
-        blinkAmount *
-        Math.PI
-      );
-
-
-    const eyelidHeight =
-      eyeCanvas.height *
-      0.18 *
-      closing;
-
-
-    eyeCtx.fillStyle =
-      "rgba(0,0,0,0.95)";
-
-
-    eyeCtx.fillRect(
+  if (ctx) {
+    ctx.setTransform(
+      dpr,
       0,
       0,
-      eyeCanvas.width,
-      eyelidHeight
-    );
-
-
-    eyeCtx.fillRect(
+      dpr,
       0,
-      eyeCanvas.height -
-        eyelidHeight,
-      eyeCanvas.width,
-      eyelidHeight
+      0
     );
-
   }
-
 }
 
-
-/* ============================================================
-   BLACK FLAMES
-   ============================================================ */
-
-let flames = [];
-
-let flameTime = 0;
-
-let flameStrength = 0;
-
-
-function resizeFlameCanvas() {
-
-  flameCanvas.width =
-    Math.ceil(
-      window.innerWidth * 0.5
-    );
-
-  flameCanvas.height =
-    Math.ceil(
-      window.innerHeight * 0.5
-    );
-
-}
-
-
-function createFlame() {
-
-  const width =
-    flameCanvas.width;
-
-  const height =
-    flameCanvas.height;
-
-
-  const side =
-    Math.random();
-
-
-  let x;
-  let y;
-  let velocityX;
-  let velocityY;
-
-
-  if (side < 0.6) {
-
-    x =
-      Math.random() *
-      width;
-
-    y =
-      height + 10;
-
-    velocityX =
-      (Math.random() - 0.5) *
-      0.5;
-
-    velocityY =
-      -(0.7 +
-        Math.random() * 1.5);
-
-  }
-  else if (side < 0.8) {
-
-    x = -5;
-
-    y =
-      height *
-      (0.4 +
-        Math.random() * 0.6);
-
-    velocityX =
-      0.2 +
-      Math.random() * 0.5;
-
-    velocityY =
-      -(0.3 +
-        Math.random() * 0.7);
-
-  }
-  else {
-
-    x =
-      width + 5;
-
-    y =
-      height *
-      (0.4 +
-        Math.random() * 0.6);
-
-    velocityX =
-      -(0.2 +
-        Math.random() * 0.5);
-
-    velocityY =
-      -(0.3 +
-        Math.random() * 0.7);
-
-  }
-
-
-  return {
-
-    x: x,
-
-    y: y,
-
-    vx: velocityX,
-
-    vy: velocityY,
-
-    life: 0,
-
-    maxLife:
-      50 +
-      Math.random() * 70,
-
-    size:
-      5 +
-      Math.random() * 14,
-
-    seed:
-      Math.random() * 10
-
-  };
-
-}
-
-
-function updateFlames() {
-
-  flameTime++;
-
-
-  flameStrength =
-    0.25 +
-    scrollProgress * 0.75;
-
-
-  const wanted =
-    REDUCED_MOTION
-      ? 50
-      : 100 +
-        Math.floor(
-          flameStrength * 100
-        );
-
-
-  while (
-    flames.length < wanted
-  ) {
-
-    flames.push(
-      createFlame()
-    );
-
-  }
-
-
-  flameCtx.clearRect(
-    0,
-    0,
-    flameCanvas.width,
-    flameCanvas.height
-  );
-
-
-  /*
-     Dark edge at bottom.
-  */
-
-  const bottomGradient =
-    flameCtx.createLinearGradient(
-      0,
-      flameCanvas.height,
-      0,
-      flameCanvas.height * 0.82
-    );
-
-
-  bottomGradient.addColorStop(
-    0,
-    "rgba(0,0,0,0.9)"
-  );
-
-  bottomGradient.addColorStop(
-    1,
-    "rgba(0,0,0,0)"
-  );
-
-
-  flameCtx.fillStyle =
-    bottomGradient;
-
-
-  flameCtx.fillRect(
-    0,
-    flameCanvas.height * 0.8,
-    flameCanvas.width,
-    flameCanvas.height * 0.2
-  );
-
-
-  /*
-     Update flames.
-  */
-
-  for (
-    let i = flames.length - 1;
-    i >= 0;
-    i--
-  ) {
-
-    const flame =
-      flames[i];
-
-
-    flame.life++;
-
-    flame.x +=
-      flame.vx +
-      Math.sin(
-        flameTime * 0.06 +
-        flame.seed
-      ) * 0.4;
-
-    flame.y +=
-      flame.vy;
-
-
-    if (
-      flame.life >=
-      flame.maxLife
-    ) {
-
-      flames.splice(
-        i,
-        1
-      );
-
-    }
-
-  }
-
-
-  /*
-     Draw flames.
-  */
-
-  for (
-    const flame of flames
-  ) {
-
-    const progress =
-      flame.life /
-      flame.maxLife;
-
-
-    const alpha =
-      Math.sin(
-        progress * Math.PI
-      );
-
-
-    const radius =
-      flame.size *
-      (1 - progress * 0.5);
-
-
-    flameCtx.save();
-
-
-    flameCtx.translate(
-      flame.x,
-      flame.y
-    );
-
-
-    flameCtx.scale(
-      1,
-      1.7
-    );
-
-
-    /*
-       Red glow.
-    */
-
-    const glow =
-      flameCtx.createRadialGradient(
-        0,
-        0,
-        0,
-        0,
-        0,
-        radius * 2
-      );
-
-
-    glow.addColorStop(
-      0,
-      "rgba(220,20,45," +
-        alpha * 0.5 +
-        ")"
-    );
-
-
-    glow.addColorStop(
-      0.5,
-      "rgba(120,0,25," +
-        alpha * 0.25 +
-        ")"
-    );
-
-
-    glow.addColorStop(
-      1,
-      "rgba(0,0,0,0)"
-    );
-
-
-    flameCtx.fillStyle =
-      glow;
-
-
-    flameCtx.fillRect(
-      -radius * 2,
-      -radius * 2,
-      radius * 4,
-      radius * 4
-    );
-
-
-    /*
-       Black center.
-    */
-
-    flameCtx.fillStyle =
-      "rgba(0,0,0," +
-      alpha +
-      ")";
-
-
-    flameCtx.beginPath();
-
-
-    flameCtx.arc(
-      0,
-      0,
-      radius,
-      0,
-      Math.PI * 2
-    );
-
-
-    flameCtx.fill();
-
-
-    flameCtx.restore();
-
-  }
-
-}
-
-
-/* ============================================================
-   CROW FEATHERS
-   ============================================================ */
-
-let feathers = [];
-
-let windForce = 0;
-
-
-function resizeFeatherCanvas() {
-
-  const dpr =
-    Math.min(
-      window.devicePixelRatio || 1,
-      2
-    );
-
-
-  featherCanvas.width =
-    window.innerWidth * dpr;
-
-  featherCanvas.height =
-    window.innerHeight * dpr;
-
-
-  featherCtx.setTransform(
-    dpr,
-    0,
-    0,
-    dpr,
-    0,
-    0
-  );
-
-}
-
-
-function createFeather(
-  startInside
-) {
-
-  const depth =
-    Math.random();
-
-
-  return {
-
-    x:
-      Math.random() *
-      window.innerWidth,
-
-    y:
-      startInside
-        ? Math.random() *
-          window.innerHeight
-        : -100,
-
-    size:
-      12 +
-      depth * 30,
-
-    speed:
-      0.4 +
-      depth * 1.2,
-
-    depth:
-      depth,
-
-    rotation:
-      Math.random() *
-      Math.PI *
-      2,
-
-    rotationSpeed:
-      (Math.random() - 0.5) *
-      0.02,
-
-    wave:
-      Math.random() *
-      Math.PI *
-      2,
-
-    waveSpeed:
-      0.01 +
-      Math.random() *
-      0.02
-
-  };
-
-}
-
-
-function drawFeather(
-  feather
-) {
-
-  const length =
-    feather.size * 2.4;
-
-  const width =
-    feather.size * 0.5;
-
-
-  featherCtx.save();
-
-
-  featherCtx.translate(
-    feather.x,
-    feather.y
-  );
-
-
-  featherCtx.rotate(
-    feather.rotation
-  );
-
-
-  featherCtx.globalAlpha =
-    0.3 +
-    feather.depth * 0.7;
-
-
-  /*
-     Feather body.
-  */
-
-  featherCtx.fillStyle =
-    "#090910";
-
-
-  featherCtx.beginPath();
-
-
-  featherCtx.moveTo(
-    0,
-    -length / 2
-  );
-
-
-  featherCtx.bezierCurveTo(
-    width,
-    -length * 0.2,
-    width,
-    length * 0.25,
-    0,
-    length / 2
-  );
-
-
-  featherCtx.bezierCurveTo(
-    -width,
-    length * 0.25,
-    -width,
-    -length * 0.2,
-    0,
-    -length / 2
-  );
-
-
-  featherCtx.closePath();
-
-
-  featherCtx.fill();
-
-
-  /*
-     Feather center line.
-  */
-
-  featherCtx.strokeStyle =
-    "rgba(160,160,190,0.3)";
-
-
-  featherCtx.lineWidth = 1;
-
-
-  featherCtx.beginPath();
-
-
-  featherCtx.moveTo(
-    0,
-    -length / 2
-  );
-
-
-  featherCtx.lineTo(
-    0,
-    length / 2
-  );
-
-
-  featherCtx.stroke();
-
-
-  featherCtx.restore();
-
-}
-
-
-function updateFeathers() {
-
-  featherCtx.clearRect(
-    0,
-    0,
-    window.innerWidth,
-    window.innerHeight
-  );
-
-
-  windForce *= 0.86;
-
-
-  const wanted =
-    REDUCED_MOTION
-      ? 8
-      : 20;
-
-
-  while (
-    feathers.length < wanted
-  ) {
-
-    feathers.push(
-      createFeather(true)
-    );
-
-  }
-
-
-  for (
-    let i = 0;
-    i < feathers.length;
-    i++
-  ) {
-
-    const feather =
-      feathers[i];
-
-
-    feather.wave +=
-      feather.waveSpeed;
-
-
-    feather.rotation +=
-      feather.rotationSpeed;
-
-
-    feather.x +=
-      Math.sin(
-        feather.wave
-      ) *
-      0.7;
-
-
-    feather.y +=
-      feather.speed -
-      windForce * 0.05;
-
-
-    if (
-      feather.y >
-        window.innerHeight + 100
-    ) {
-
-      feathers[i] =
-        createFeather(false);
-
-    }
-    else {
-
-      drawFeather(
-        feather
-      );
-
-    }
-
-  }
-
-}
-
-
-/* ============================================================
-   LIGHTNING
-   ============================================================ */
-
-let lightningTimer = 0;
-
-let lightningAlpha = 0;
-
-
-function updateLightning() {
-
-  lightningTimer++;
-
-
-  if (
-    !REDUCED_MOTION &&
-    lightningTimer >
-      300 +
-      Math.random() * 500
-  ) {
-
-    lightningTimer = 0;
-
-    lightningAlpha = 1;
-
-  }
-
-
-  if (
-    lightningAlpha > 0
-  ) {
-
-    lightningAlpha *= 0.88;
-
-
-    featherCtx.fillStyle =
-      "rgba(180,210,255," +
-      lightningAlpha * 0.08 +
-      ")";
-
-
-    featherCtx.fillRect(
-      0,
-      0,
-      window.innerWidth,
-      window.innerHeight
-    );
-
-  }
-
-}
-
-
-/* ============================================================
-   MUSIC
-   ============================================================ */
-
-let musicPlaying = false;
-
-
-function toggleMusic() {
-
-  if (!bgMusic) {
-
-    return;
-
-  }
-
-
-  if (!musicPlaying) {
-
-    bgMusic.volume = 0.7;
-
-
-    const promise =
-      bgMusic.play();
-
-
-    if (
-      promise &&
-      typeof promise.catch ===
-        "function"
-    ) {
-
-      promise.catch(
-        function (error) {
-
-          console.error(
-            "Music could not play:",
-            error
-          );
-
-        }
-      );
-
-    }
-
-
-    musicPlaying = true;
-
-
-    if (soundState) {
-
-      soundState.textContent =
-        "MUSIC ON";
-
-    }
-
-
-    soundToggle.setAttribute(
-      "aria-pressed",
-      "true"
-    );
-
-  }
-  else {
-
-    bgMusic.pause();
-
-    musicPlaying = false;
-
-
-    if (soundState) {
-
-      soundState.textContent =
-        "MUSIC OFF";
-
-    }
-
-
-    soundToggle.setAttribute(
-      "aria-pressed",
-      "false"
-    );
-
-  }
-
-}
-
-
-if (soundToggle) {
-
-  soundToggle.addEventListener(
-    "click",
-    toggleMusic
-  );
-
-}
-
-
-/* ============================================================
-   CUSTOM SHARINGAN CURSOR
-   ============================================================ */
-
-let cursorX =
-  window.innerWidth / 2;
-
-let cursorY =
-  window.innerHeight / 2;
-
-
-function updateCursor() {
-
-  cursorX +=
-    (mouseX - cursorX) *
-    0.18;
-
-
-  cursorY +=
-    (mouseY - cursorY) *
-    0.18;
-
-
-  if (cursor) {
-
-    cursor.style.transform =
-      "translate3d(" +
-      cursorX +
-      "px, " +
-      cursorY +
-      "px, 0)";
-
-  }
-
-
-  if (cursorDot) {
-
-    cursorDot.style.transform =
-      "translate3d(" +
-      mouseX +
-      "px, " +
-      mouseY +
-      "px, 0)";
-
-  }
-
-}
-
-
-/* ============================================================
-   RESIZE
-   ============================================================ */
 
 function resizeAll() {
 
-  const dpr =
-    Math.min(
-      window.devicePixelRatio || 1,
-      2
-    );
-
-
-  /*
-     Main Itachi canvas.
-  */
-
-  mainCanvas.width =
-    window.innerWidth * dpr;
-
-  mainCanvas.height =
-    window.innerHeight * dpr;
-
-
-  /*
-     Eye canvas.
-  */
-
-  eyeCanvas.width =
-    window.innerWidth * dpr;
-
-  eyeCanvas.height =
-    window.innerHeight * dpr;
-
-
-  /*
-     Effect canvases.
-  */
-
-  resizeFlameCanvas();
-
-  resizeFeatherCanvas();
-
-
-  /*
-     Redraw current Itachi frame.
-  */
-
-  drawImageCover(
-    mainCtx,
-    mainCanvas,
-    frames[currentFrame]
-  );
-
+  resizeCanvas(mainCanvas);
+  resizeCanvas(eyeCanvas);
+  resizeCanvas(flameCanvas);
+  resizeCanvas(featherCanvas);
 }
 
 
@@ -1714,68 +195,761 @@ window.addEventListener(
 
 
 /* ============================================================
+   COVER DRAW
+   ============================================================ */
+
+function drawCover(
+  ctx,
+  img,
+  canvas
+) {
+
+  if (!ctx || !img || !canvas) return;
+
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+
+  const imgRatio =
+    img.naturalWidth / img.naturalHeight;
+
+  const screenRatio =
+    width / height;
+
+  let drawWidth;
+  let drawHeight;
+  let x;
+  let y;
+
+
+  if (imgRatio > screenRatio) {
+
+    drawHeight = height;
+    drawWidth = height * imgRatio;
+
+    x = (width - drawWidth) / 2;
+    y = 0;
+
+  } else {
+
+    drawWidth = width;
+    drawHeight = width / imgRatio;
+
+    x = 0;
+    y = (height - drawHeight) / 2;
+  }
+
+
+  ctx.drawImage(
+    img,
+    x,
+    y,
+    drawWidth,
+    drawHeight
+  );
+}
+
+
+/* ============================================================
+   MAIN FRAME DRAWING
+   ============================================================ */
+
+function drawMainFrame() {
+
+  if (
+    !mainCtx ||
+    !frameImages.length
+  ) {
+    return;
+  }
+
+  const img =
+    frameImages[currentFrame];
+
+  if (
+    !img ||
+    !img.complete ||
+    !img.naturalWidth
+  ) {
+    return;
+  }
+
+
+  mainCtx.clearRect(
+    0,
+    0,
+    window.innerWidth,
+    window.innerHeight
+  );
+
+
+  /*
+     IMPORTANT:
+     There is intentionally NO zoom here.
+     The image always fills the viewport normally.
+  */
+
+  drawCover(
+    mainCtx,
+    img,
+    mainCanvas
+  );
+}
+
+
+/* ============================================================
+   SCROLL ANIMATION
+   ============================================================ */
+
+function updateScroll() {
+
+  if (!scrubSection) return;
+
+  const rect =
+    scrubSection.getBoundingClientRect();
+
+  const sectionHeight =
+    scrubSection.offsetHeight;
+
+  const scrollable =
+    sectionHeight - window.innerHeight;
+
+  if (scrollable <= 0) return;
+
+
+  let progress =
+    -rect.top / scrollable;
+
+
+  progress =
+    Math.max(
+      0,
+      Math.min(1, progress)
+    );
+
+
+  targetFrame =
+    Math.round(
+      progress * (FRAME_COUNT - 1)
+    );
+
+
+  /*
+     Small smoothing so the frame movement
+     does not look harsh.
+  */
+
+  currentFrame +=
+    (targetFrame - currentFrame) * 0.18;
+
+
+  currentFrame =
+    Math.max(
+      0,
+      Math.min(
+        FRAME_COUNT - 1,
+        Math.round(currentFrame)
+      )
+    );
+}
+
+
+/* ============================================================
+   MOUSE
+   ============================================================ */
+
+window.addEventListener(
+  "mousemove",
+  function (event) {
+
+    mouseX = event.clientX;
+    mouseY = event.clientY;
+
+    /*
+       Cursor follows mouse.
+       This does NOT control blinking.
+    */
+
+    if (cursor) {
+      cursor.style.left =
+        mouseX + "px";
+
+      cursor.style.top =
+        mouseY + "px";
+    }
+
+    if (cursorDot) {
+      cursorDot.style.left =
+        mouseX + "px";
+
+      cursorDot.style.top =
+        mouseY + "px";
+    }
+  }
+);
+
+
+/* ============================================================
+   SHARINGAN EYE MOVEMENT
+   ============================================================ */
+
+function updateEyeMovement() {
+
+  const centerX =
+    window.innerWidth / 2;
+
+  const centerY =
+    window.innerHeight / 2;
+
+
+  const dx =
+    mouseX - centerX;
+
+  const dy =
+    mouseY - centerY;
+
+
+  /*
+     Limit movement so the eye remains natural.
+  */
+
+  const maxMovement = 18;
+
+  const targetX =
+    centerX +
+    Math.max(
+      -maxMovement,
+      Math.min(
+        maxMovement,
+        dx * 0.035
+      )
+    );
+
+
+  const targetY =
+    centerY +
+    Math.max(
+      -maxMovement,
+      Math.min(
+        maxMovement,
+        dy * 0.035
+      )
+    );
+
+
+  eyeX +=
+    (targetX - eyeX) * 0.08;
+
+  eyeY +=
+    (targetY - eyeY) * 0.08;
+}
+
+
+/* ============================================================
+   NATURAL BLINKING
+   ============================================================ */
+
+function scheduleBlink() {
+
+  const delay =
+    2800 +
+    Math.random() * 3500;
+
+
+  blinkTimer =
+    setTimeout(
+      function () {
+
+        blinking = true;
+
+
+        /*
+           Blink duration.
+        */
+
+        setTimeout(
+          function () {
+
+            blinking = false;
+
+            scheduleBlink();
+
+          },
+          180
+        );
+
+      },
+      delay
+    );
+}
+
+
+/* ============================================================
+   EYE DRAWING
+   ============================================================ */
+
+function drawEyes() {
+
+  if (
+    !eyeCtx ||
+    !eyeImages.length
+  ) {
+    return;
+  }
+
+
+  eyeCtx.clearRect(
+    0,
+    0,
+    window.innerWidth,
+    window.innerHeight
+  );
+
+
+  /*
+     Choose eye image based on mouse direction.
+  */
+
+  const dx =
+    mouseX - window.innerWidth / 2;
+
+  const dy =
+    mouseY - window.innerHeight / 2;
+
+
+  let eyeIndex = 4;
+
+
+  if (dx < -250) {
+    eyeIndex -= 2;
+  } else if (dx < -80) {
+    eyeIndex -= 1;
+  } else if (dx > 250) {
+    eyeIndex += 2;
+  } else if (dx > 80) {
+    eyeIndex += 1;
+  }
+
+
+  if (dy < -180) {
+    eyeIndex -= 1;
+  }
+
+  if (dy > 180) {
+    eyeIndex += 1;
+  }
+
+
+  eyeIndex =
+    Math.max(
+      0,
+      Math.min(
+        EYE_COUNT - 1,
+        eyeIndex
+      )
+    );
+
+
+  const img =
+    eyeImages[eyeIndex];
+
+
+  if (
+    !img ||
+    !img.complete ||
+    !img.naturalWidth
+  ) {
+    return;
+  }
+
+
+  /*
+     Natural blink effect.
+     Cursor movement does NOT trigger it.
+  */
+
+  if (blinking) {
+
+    eyeCtx.save();
+
+    eyeCtx.globalAlpha = 0.2;
+
+    drawCover(
+      eyeCtx,
+      img,
+      eyeCanvas
+    );
+
+    eyeCtx.restore();
+
+  } else {
+
+    drawCover(
+      eyeCtx,
+      img,
+      eyeCanvas
+    );
+  }
+}
+
+
+/* ============================================================
+   BLACK FLAMES
+   ============================================================ */
+
+const flames = [];
+
+
+function createFlame() {
+
+  return {
+    x: Math.random() * window.innerWidth,
+
+    y:
+      window.innerHeight +
+      Math.random() * 100,
+
+    size:
+      8 +
+      Math.random() * 25,
+
+    speed:
+      0.5 +
+      Math.random() * 1.4,
+
+    opacity:
+      0.1 +
+      Math.random() * 0.35
+  };
+}
+
+
+function initializeFlames() {
+
+  flames.length = 0;
+
+  for (let i = 0; i < 35; i++) {
+    flames.push(createFlame());
+  }
+}
+
+
+function drawFlames() {
+
+  if (!flameCtx) return;
+
+  flameCtx.clearRect(
+    0,
+    0,
+    window.innerWidth,
+    window.innerHeight
+  );
+
+
+  flameCtx.fillStyle =
+    "rgba(0,0,0,0.35)";
+
+
+  for (const flame of flames) {
+
+    flame.y -= flame.speed;
+
+    flame.x +=
+      Math.sin(
+        flame.y * 0.025
+      ) * 0.35;
+
+
+    if (
+      flame.y <
+      window.innerHeight * 0.45
+    ) {
+      flame.y =
+        window.innerHeight +
+        Math.random() * 50;
+    }
+
+
+    flameCtx.globalAlpha =
+      flame.opacity;
+
+
+    flameCtx.beginPath();
+
+    flameCtx.ellipse(
+      flame.x,
+      flame.y,
+      flame.size * 0.5,
+      flame.size,
+      0,
+      0,
+      Math.PI * 2
+    );
+
+    flameCtx.fill();
+  }
+
+
+  flameCtx.globalAlpha = 1;
+}
+
+
+/* ============================================================
+   CROW FEATHERS
+   ============================================================ */
+
+const feathers = [];
+
+
+function createFeather() {
+
+  return {
+    x: Math.random() * window.innerWidth,
+
+    y:
+      -50 -
+      Math.random() * window.innerHeight,
+
+    size:
+      5 +
+      Math.random() * 12,
+
+    speed:
+      0.4 +
+      Math.random() * 1,
+
+    rotation:
+      Math.random() * Math.PI,
+
+    rotationSpeed:
+      (Math.random() - 0.5) * 0.02,
+
+    opacity:
+      0.15 +
+      Math.random() * 0.35
+  };
+}
+
+
+function initializeFeathers() {
+
+  feathers.length = 0;
+
+  for (let i = 0; i < 18; i++) {
+    feathers.push(createFeather());
+  }
+}
+
+
+function drawFeathers() {
+
+  if (!featherCtx) return;
+
+  featherCtx.clearRect(
+    0,
+    0,
+    window.innerWidth,
+    window.innerHeight
+  );
+
+
+  for (const feather of feathers) {
+
+    feather.y += feather.speed;
+
+    feather.x +=
+      Math.sin(
+        feather.y * 0.01
+      ) * 0.25;
+
+    feather.rotation +=
+      feather.rotationSpeed;
+
+
+    if (
+      feather.y >
+      window.innerHeight + 50
+    ) {
+
+      feather.y = -50;
+
+      feather.x =
+        Math.random() *
+        window.innerWidth;
+    }
+
+
+    featherCtx.save();
+
+    featherCtx.translate(
+      feather.x,
+      feather.y
+    );
+
+    featherCtx.rotate(
+      feather.rotation
+    );
+
+    featherCtx.globalAlpha =
+      feather.opacity;
+
+    featherCtx.fillStyle =
+      "rgba(0,0,0,0.8)";
+
+
+    featherCtx.beginPath();
+
+    featherCtx.ellipse(
+      0,
+      0,
+      feather.size * 0.35,
+      feather.size,
+      0,
+      0,
+      Math.PI * 2
+    );
+
+    featherCtx.fill();
+
+    featherCtx.restore();
+  }
+}
+
+
+/* ============================================================
+   MUSIC
+   ============================================================ */
+
+let musicStarted = false;
+
+
+function startMusic() {
+
+  if (!bgMusic) return;
+
+  bgMusic.volume = 0.55;
+
+  const promise =
+    bgMusic.play();
+
+
+  if (promise) {
+
+    promise
+      .then(function () {
+
+        musicStarted = true;
+
+        if (soundToggle) {
+          soundToggle.textContent =
+            "SOUND ON";
+        }
+
+      })
+      .catch(function () {
+
+        musicStarted = false;
+
+        if (soundToggle) {
+          soundToggle.textContent =
+            "SOUND";
+        }
+      });
+  }
+}
+
+
+if (soundToggle) {
+
+  soundToggle.addEventListener(
+    "click",
+    function () {
+
+      if (!bgMusic) return;
+
+
+      if (bgMusic.paused) {
+
+        startMusic();
+
+      } else {
+
+        bgMusic.pause();
+
+        musicStarted = false;
+
+        soundToggle.textContent =
+          "SOUND OFF";
+      }
+    }
+  );
+}
+
+
+/*
+   Browsers often block autoplay.
+   Start music on the first user interaction.
+*/
+
+function unlockAudio() {
+
+  if (!musicStarted) {
+    startMusic();
+  }
+
+  window.removeEventListener(
+    "click",
+    unlockAudio
+  );
+
+  window.removeEventListener(
+    "touchstart",
+    unlockAudio
+  );
+
+  window.removeEventListener(
+    "keydown",
+    unlockAudio
+  );
+}
+
+
+window.addEventListener(
+  "click",
+  unlockAudio
+);
+
+window.addEventListener(
+  "touchstart",
+  unlockAudio
+);
+
+window.addEventListener(
+  "keydown",
+  unlockAudio
+);
+
+
+/* ============================================================
    MAIN ANIMATION LOOP
    ============================================================ */
 
-function animationLoop(
-  time
-) {
+function animationLoop() {
 
-  /*
-     Smooth Sharingan movement.
-  */
+  updateScroll();
 
-  eyePosition +=
-    (eyeTarget - eyePosition) *
-    0.12;
+  updateEyeMovement();
 
-
-  /*
-     Automatic blink.
-  */
-
-  updateBlink(time);
-
-
-  /*
-     Draw eyes.
-  */
+  drawMainFrame();
 
   drawEyes();
 
+  drawFlames();
 
-  /*
-     Black flames.
-  */
-
-  updateFlames();
-
-
-  /*
-     Feathers.
-  */
-
-  updateFeathers();
-
-
-  /*
-     Lightning.
-  */
-
-  updateLightning();
-
-
-  /*
-     Custom cursor.
-  */
-
-  updateCursor();
-
+  drawFeathers();
 
   requestAnimationFrame(
     animationLoop
   );
-
 }
 
 
@@ -1785,29 +959,67 @@ function animationLoop(
 
 function startSite() {
 
+  if (animationStarted) {
+    return;
+  }
+
+  animationStarted = true;
+
   resizeAll();
 
-  updateScroll();
+  currentFrame = 0;
+  targetFrame = 0;
+
+  drawMainFrame();
+  drawEyes();
+
+  initializeFlames();
+  initializeFeathers();
+
+  scheduleBlink();
+
+  /*
+     Hide loader.
+  */
 
   if (loader) {
+    loader.classList.add("hide");
 
-    loader.classList.add(
-      "hide"
-    );
+    /*
+       Extra protection in case CSS
+       does not hide the loader.
+    */
 
+    loader.style.display = "none";
   }
 
 
-  requestAnimationFrame(
-    animationLoop
-  );
-
+  animationLoop();
 }
 
 
 /* ============================================================
-   INITIAL SAFETY CHECK
+   SCROLL LISTENER
    ============================================================ */
+
+window.addEventListener(
+  "scroll",
+  updateScroll,
+  { passive: true }
+);
+
+
+/* ============================================================
+   INITIALIZATION
+   ============================================================ */
+
+function initialize() {
+
+  resizeAll();
+
+  loadImages();
+}
+
 
 if (
   !scrubSection ||
@@ -1820,5 +1032,7 @@ if (
     "Itachi website: required HTML element is missing."
   );
 
+} else {
+
+  initialize();
 }
-```
