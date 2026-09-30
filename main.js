@@ -1,17 +1,5 @@
 /* ============================================================
-   ITACHI UCHIHA WEBSITE
-   ============================================================
-
-   FEATURES
-   - 150 frame scroll animation
-   - No zoom while scrolling
-   - Sharingan follows mouse
-   - Natural automatic blinking
-   - Itachi audio
-   - Black flames
-   - Crow feathers
-   - Lightning effects
-   - Custom Sharingan cursor
+   ITACHI UCHIHA — CINEMATIC WEBSITE
    ============================================================ */
 
 const FRAME_COUNT = 150;
@@ -29,18 +17,20 @@ let targetFrame = 0;
 let mouseX = window.innerWidth / 2;
 let mouseY = window.innerHeight / 2;
 
-let eyeX = window.innerWidth / 2;
-let eyeY = window.innerHeight / 2;
+let eyeX = mouseX;
+let eyeY = mouseY;
 
-let blinkTimer = null;
 let blinking = false;
-
-let windForce = 0;
 let animationStarted = false;
+let musicStarted = false;
+
+let lastTime = 0;
+let lightning = 0;
+let lightningTimer = 0;
 
 
 /* ============================================================
-   HTML ELEMENTS
+   ELEMENTS
    ============================================================ */
 
 const loader = document.getElementById("loader");
@@ -48,6 +38,7 @@ const loaderPct = document.getElementById("loaderPct");
 const loaderFill = document.getElementById("loaderFill");
 
 const scrubSection = document.getElementById("scrub");
+
 const mainCanvas = document.getElementById("mainCanvas");
 const eyeCanvas = document.getElementById("eyeCanvas");
 
@@ -60,13 +51,10 @@ const soundToggle = document.getElementById("soundToggle");
 const cursor = document.getElementById("cursor");
 const cursorDot = document.getElementById("cursorDot");
 
-const mainCtx = mainCanvas ? mainCanvas.getContext("2d") : null;
-const eyeCtx = eyeCanvas ? eyeCanvas.getContext("2d") : null;
-
-const flameCtx = flameCanvas ? flameCanvas.getContext("2d") : null;
-const featherCtx = featherCanvas
-  ? featherCanvas.getContext("2d")
-  : null;
+const mainCtx = mainCanvas?.getContext("2d");
+const eyeCtx = eyeCanvas?.getContext("2d");
+const flameCtx = flameCanvas?.getContext("2d");
+const featherCtx = featherCanvas?.getContext("2d");
 
 
 /* ============================================================
@@ -77,16 +65,16 @@ function imageLoaded() {
 
   loadedImages++;
 
-  const percentage = Math.round(
+  const percent = Math.round(
     (loadedImages / totalImages) * 100
   );
 
   if (loaderPct) {
-    loaderPct.textContent = percentage + "%";
+    loaderPct.textContent = percent + "%";
   }
 
   if (loaderFill) {
-    loaderFill.style.width = percentage + "%";
+    loaderFill.style.width = percent + "%";
   }
 
   if (
@@ -104,20 +92,23 @@ function loadImages() {
 
     const img = new Image();
 
-    const number = String(i).padStart(4, "0");
+    const number =
+      String(i).padStart(4, "0");
 
     img.onload = imageLoaded;
 
-    img.onerror = function () {
-      console.error(
-        "Could not load frame:",
+    img.onerror = () => {
+
+      console.warn(
+        "Frame unavailable:",
         `frames/f_${number}.jpg`
       );
 
       imageLoaded();
     };
 
-    img.src = `frames/f_${number}.jpg`;
+    img.src =
+      `frames/f_${number}.jpg`;
 
     frameImages.push(img);
   }
@@ -129,16 +120,18 @@ function loadImages() {
 
     img.onload = imageLoaded;
 
-    img.onerror = function () {
-      console.error(
-        "Could not load eye:",
+    img.onerror = () => {
+
+      console.warn(
+        "Eye unavailable:",
         `eyes/eye_${i}.jpg`
       );
 
       imageLoaded();
     };
 
-    img.src = `eyes/eye_${i}.jpg`;
+    img.src =
+      `eyes/eye_${i}.jpg`;
 
     eyeImages.push(img);
   }
@@ -146,36 +139,42 @@ function loadImages() {
 
 
 /* ============================================================
-   CANVAS RESIZE
+   RESIZE
    ============================================================ */
 
 function resizeCanvas(canvas) {
 
   if (!canvas) return;
 
-  const dpr = Math.min(
-    window.devicePixelRatio || 1,
-    2
-  );
-
-  canvas.width = window.innerWidth * dpr;
-  canvas.height = window.innerHeight * dpr;
-
-  canvas.style.width = window.innerWidth + "px";
-  canvas.style.height = window.innerHeight + "px";
-
-  const ctx = canvas.getContext("2d");
-
-  if (ctx) {
-    ctx.setTransform(
-      dpr,
-      0,
-      0,
-      dpr,
-      0,
-      0
+  const dpr =
+    Math.min(
+      window.devicePixelRatio || 1,
+      2
     );
-  }
+
+  canvas.width =
+    window.innerWidth * dpr;
+
+  canvas.height =
+    window.innerHeight * dpr;
+
+  canvas.style.width =
+    window.innerWidth + "px";
+
+  canvas.style.height =
+    window.innerHeight + "px";
+
+  const ctx =
+    canvas.getContext("2d");
+
+  ctx.setTransform(
+    dpr,
+    0,
+    0,
+    dpr,
+    0,
+    0
+  );
 }
 
 
@@ -195,47 +194,51 @@ window.addEventListener(
 
 
 /* ============================================================
-   COVER DRAW
+   COVER IMAGE
    ============================================================ */
 
-function drawCover(
-  ctx,
-  img,
-  canvas
-) {
+function drawCover(ctx, img) {
 
-  if (!ctx || !img || !canvas) return;
+  if (
+    !ctx ||
+    !img ||
+    !img.naturalWidth
+  ) return;
 
-  const width = window.innerWidth;
-  const height = window.innerHeight;
+  const w =
+    window.innerWidth;
 
-  const imgRatio =
-    img.naturalWidth / img.naturalHeight;
+  const h =
+    window.innerHeight;
+
+  const imageRatio =
+    img.naturalWidth /
+    img.naturalHeight;
 
   const screenRatio =
-    width / height;
+    w / h;
 
-  let drawWidth;
-  let drawHeight;
+  let drawW;
+  let drawH;
   let x;
   let y;
 
 
-  if (imgRatio > screenRatio) {
+  if (imageRatio > screenRatio) {
 
-    drawHeight = height;
-    drawWidth = height * imgRatio;
+    drawH = h;
+    drawW = h * imageRatio;
 
-    x = (width - drawWidth) / 2;
+    x = (w - drawW) / 2;
     y = 0;
 
   } else {
 
-    drawWidth = width;
-    drawHeight = width / imgRatio;
+    drawW = w;
+    drawH = w / imageRatio;
 
     x = 0;
-    y = (height - drawHeight) / 2;
+    y = (h - drawH) / 2;
   }
 
 
@@ -243,36 +246,19 @@ function drawCover(
     img,
     x,
     y,
-    drawWidth,
-    drawHeight
+    drawW,
+    drawH
   );
 }
 
 
 /* ============================================================
-   MAIN FRAME DRAWING
+   MAIN ITACHI FRAME
    ============================================================ */
 
 function drawMainFrame() {
 
-  if (
-    !mainCtx ||
-    !frameImages.length
-  ) {
-    return;
-  }
-
-  const img =
-    frameImages[currentFrame];
-
-  if (
-    !img ||
-    !img.complete ||
-    !img.naturalWidth
-  ) {
-    return;
-  }
-
+  if (!mainCtx) return;
 
   mainCtx.clearRect(
     0,
@@ -282,22 +268,63 @@ function drawMainFrame() {
   );
 
 
+  const img =
+    frameImages[currentFrame];
+
+  if (
+    img &&
+    img.complete &&
+    img.naturalWidth
+  ) {
+
+    drawCover(
+      mainCtx,
+      img
+    );
+  }
+
+
   /*
-     IMPORTANT:
-     There is intentionally NO zoom here.
-     The image always fills the viewport normally.
+     DARK RED CINEMATIC GRADING
   */
 
-  drawCover(
-    mainCtx,
-    img,
-    mainCanvas
+  const gradient =
+    mainCtx.createLinearGradient(
+      0,
+      0,
+      0,
+      window.innerHeight
+    );
+
+  gradient.addColorStop(
+    0,
+    "rgba(0,0,0,0.18)"
+  );
+
+  gradient.addColorStop(
+    0.5,
+    "rgba(30,0,0,0.04)"
+  );
+
+  gradient.addColorStop(
+    1,
+    "rgba(0,0,0,0.45)"
+  );
+
+  mainCtx.fillStyle =
+    gradient;
+
+  mainCtx.fillRect(
+    0,
+    0,
+    window.innerWidth,
+    window.innerHeight
   );
 }
 
 
 /* ============================================================
-   SCROLL ANIMATION
+   SCROLL
    ============================================================ */
 
 function updateScroll() {
@@ -307,18 +334,15 @@ function updateScroll() {
   const rect =
     scrubSection.getBoundingClientRect();
 
-  const sectionHeight =
-    scrubSection.offsetHeight;
-
   const scrollable =
-    sectionHeight - window.innerHeight;
+    scrubSection.offsetHeight -
+    window.innerHeight;
 
   if (scrollable <= 0) return;
 
-
   let progress =
-    -rect.top / scrollable;
-
+    -rect.top /
+    scrollable;
 
   progress =
     Math.max(
@@ -329,17 +353,14 @@ function updateScroll() {
 
   targetFrame =
     Math.round(
-      progress * (FRAME_COUNT - 1)
+      progress *
+      (FRAME_COUNT - 1)
     );
 
 
-  /*
-     Small smoothing so the frame movement
-     does not look harsh.
-  */
-
   currentFrame +=
-    (targetFrame - currentFrame) * 0.18;
+    (targetFrame - currentFrame) *
+    0.2;
 
 
   currentFrame =
@@ -353,23 +374,27 @@ function updateScroll() {
 }
 
 
+window.addEventListener(
+  "scroll",
+  updateScroll,
+  { passive: true }
+);
+
+
 /* ============================================================
    MOUSE
    ============================================================ */
 
 window.addEventListener(
   "mousemove",
-  function (event) {
+  event => {
 
     mouseX = event.clientX;
     mouseY = event.clientY;
 
-    /*
-       Cursor follows mouse.
-       This does NOT control blinking.
-    */
 
     if (cursor) {
+
       cursor.style.left =
         mouseX + "px";
 
@@ -377,7 +402,9 @@ window.addEventListener(
         mouseY + "px";
     }
 
+
     if (cursorDot) {
+
       cursorDot.style.left =
         mouseX + "px";
 
@@ -389,113 +416,103 @@ window.addEventListener(
 
 
 /* ============================================================
-   SHARINGAN EYE MOVEMENT
+   SHARINGAN EYE FOLLOW
    ============================================================ */
 
 function updateEyeMovement() {
 
-  const centerX =
+  const cx =
     window.innerWidth / 2;
 
-  const centerY =
+  const cy =
     window.innerHeight / 2;
 
 
   const dx =
-    mouseX - centerX;
+    mouseX - cx;
 
   const dy =
-    mouseY - centerY;
+    mouseY - cy;
 
 
-  /*
-     Limit movement so the eye remains natural.
-  */
+  const maxMove = 20;
 
-  const maxMovement = 18;
 
-  const targetX =
-    centerX +
+  const tx =
+    cx +
     Math.max(
-      -maxMovement,
+      -maxMove,
       Math.min(
-        maxMovement,
+        maxMove,
         dx * 0.035
       )
     );
 
 
-  const targetY =
-    centerY +
+  const ty =
+    cy +
     Math.max(
-      -maxMovement,
+      -maxMove,
       Math.min(
-        maxMovement,
+        maxMove,
         dy * 0.035
       )
     );
 
 
   eyeX +=
-    (targetX - eyeX) * 0.08;
+    (tx - eyeX) * 0.08;
 
   eyeY +=
-    (targetY - eyeY) * 0.08;
+    (ty - eyeY) * 0.08;
 }
 
 
 /* ============================================================
-   NATURAL BLINKING
+   NATURAL BLINK
    ============================================================ */
+
+function blink() {
+
+  if (blinking) return;
+
+  blinking = true;
+
+  setTimeout(
+    () => {
+      blinking = false;
+    },
+    140
+  );
+}
+
 
 function scheduleBlink() {
 
   const delay =
-    2800 +
-    Math.random() * 3500;
+    2500 +
+    Math.random() * 4500;
 
+  setTimeout(
+    () => {
 
-  blinkTimer =
-    setTimeout(
-      function () {
+      blink();
 
-        blinking = true;
+      scheduleBlink();
 
-
-        /*
-           Blink duration.
-        */
-
-        setTimeout(
-          function () {
-
-            blinking = false;
-
-            scheduleBlink();
-
-          },
-          180
-        );
-
-      },
-      delay
-    );
+    },
+    delay
+  );
 }
 
 
 /* ============================================================
-   EYE DRAWING
+   EYE DRAW
    ============================================================ */
 
 function drawEyes() {
 
-  if (
-    !eyeCtx ||
-    !eyeImages.length
-  ) {
-    return;
-  }
-
+  if (!eyeCtx) return;
 
   eyeCtx.clearRect(
     0,
@@ -506,77 +523,64 @@ function drawEyes() {
 
 
   /*
-     Choose eye image based on mouse direction.
+     Eye direction.
   */
 
   const dx =
-    mouseX - window.innerWidth / 2;
+    mouseX -
+    window.innerWidth / 2;
 
   const dy =
-    mouseY - window.innerHeight / 2;
+    mouseY -
+    window.innerHeight / 2;
 
 
-  let eyeIndex = 4;
+  let index = 4;
 
 
-  if (dx < -250) {
-    eyeIndex -= 2;
-  } else if (dx < -80) {
-    eyeIndex -= 1;
-  } else if (dx > 250) {
-    eyeIndex += 2;
-  } else if (dx > 80) {
-    eyeIndex += 1;
-  }
+  if (dx < -250) index -= 2;
+  else if (dx < -80) index -= 1;
+  else if (dx > 250) index += 2;
+  else if (dx > 80) index += 1;
 
 
-  if (dy < -180) {
-    eyeIndex -= 1;
-  }
-
-  if (dy > 180) {
-    eyeIndex += 1;
-  }
+  if (dy < -180) index -= 1;
+  if (dy > 180) index += 1;
 
 
-  eyeIndex =
+  index =
     Math.max(
       0,
       Math.min(
         EYE_COUNT - 1,
-        eyeIndex
+        index
       )
     );
 
 
   const img =
-    eyeImages[eyeIndex];
+    eyeImages[index];
 
 
   if (
     !img ||
-    !img.complete ||
     !img.naturalWidth
-  ) {
-    return;
-  }
+  ) return;
 
 
   /*
-     Natural blink effect.
-     Cursor movement does NOT trigger it.
+     Natural blink.
   */
 
   if (blinking) {
 
     eyeCtx.save();
 
-    eyeCtx.globalAlpha = 0.2;
+    eyeCtx.globalAlpha = 0.25;
 
     drawCover(
       eyeCtx,
-      img,
-      eyeCanvas
+      img
     );
 
     eyeCtx.restore();
@@ -585,57 +589,67 @@ function drawEyes() {
 
     drawCover(
       eyeCtx,
-      img,
-      eyeCanvas
+      img
     );
   }
 }
 
 
 /* ============================================================
-   BLACK FLAMES
+   RED FOG / AURA
    ============================================================ */
 
-const flames = [];
+const fogParticles = [];
 
 
-function createFlame() {
+function createFogParticle() {
 
   return {
-    x: Math.random() * window.innerWidth,
+
+    x:
+      Math.random() *
+      window.innerWidth,
 
     y:
-      window.innerHeight +
-      Math.random() * 100,
+      Math.random() *
+      window.innerHeight,
 
-    size:
-      8 +
-      Math.random() * 25,
+    radius:
+      80 +
+      Math.random() * 180,
 
     speed:
-      0.5 +
-      Math.random() * 1.4,
+      0.15 +
+      Math.random() * 0.4,
 
     opacity:
-      0.1 +
-      Math.random() * 0.35
+      0.015 +
+      Math.random() * 0.035,
+
+    phase:
+      Math.random() *
+      Math.PI * 2
   };
 }
 
 
-function initializeFlames() {
+function initializeFog() {
 
-  flames.length = 0;
+  fogParticles.length = 0;
 
-  for (let i = 0; i < 35; i++) {
-    flames.push(createFlame());
+  for (let i = 0; i < 18; i++) {
+
+    fogParticles.push(
+      createFogParticle()
+    );
   }
 }
 
 
-function drawFlames() {
+function drawRedFog(time) {
 
   if (!flameCtx) return;
+
 
   flameCtx.clearRect(
     0,
@@ -645,42 +659,114 @@ function drawFlames() {
   );
 
 
+  /*
+     Large red atmospheric glow.
+  */
+
+  const cx =
+    window.innerWidth * 0.5;
+
+  const cy =
+    window.innerHeight * 0.55;
+
+
+  const aura =
+    flameCtx.createRadialGradient(
+      cx,
+      cy,
+      0,
+      cx,
+      cy,
+      Math.max(
+        window.innerWidth,
+        window.innerHeight
+      ) * 0.7
+    );
+
+
+  aura.addColorStop(
+    0,
+    "rgba(150,0,0,0.18)"
+  );
+
+  aura.addColorStop(
+    0.35,
+    "rgba(90,0,0,0.08)"
+  );
+
+  aura.addColorStop(
+    1,
+    "rgba(0,0,0,0)"
+  );
+
+
   flameCtx.fillStyle =
-    "rgba(0,0,0,0.35)";
+    aura;
+
+  flameCtx.fillRect(
+    0,
+    0,
+    window.innerWidth,
+    window.innerHeight
+  );
 
 
-  for (const flame of flames) {
+  /*
+     Moving fog.
+  */
 
-    flame.y -= flame.speed;
+  for (const p of fogParticles) {
 
-    flame.x +=
+    p.x +=
       Math.sin(
-        flame.y * 0.025
-      ) * 0.35;
+        time * 0.0003 +
+        p.phase
+      ) * 0.25;
+
+    p.y -= p.speed;
 
 
-    if (
-      flame.y <
-      window.innerHeight * 0.45
-    ) {
-      flame.y =
+    if (p.y < -p.radius) {
+
+      p.y =
         window.innerHeight +
-        Math.random() * 50;
+        p.radius;
+
     }
 
 
-    flameCtx.globalAlpha =
-      flame.opacity;
+    const fog =
+      flameCtx.createRadialGradient(
+        p.x,
+        p.y,
+        0,
+        p.x,
+        p.y,
+        p.radius
+      );
+
+
+    fog.addColorStop(
+      0,
+      `rgba(180,0,0,${p.opacity})`
+    );
+
+    fog.addColorStop(
+      1,
+      "rgba(80,0,0,0)"
+    );
+
+
+    flameCtx.fillStyle =
+      fog;
 
 
     flameCtx.beginPath();
 
-    flameCtx.ellipse(
-      flame.x,
-      flame.y,
-      flame.size * 0.5,
-      flame.size,
-      0,
+    flameCtx.arc(
+      p.x,
+      p.y,
+      p.radius,
       0,
       Math.PI * 2
     );
@@ -689,60 +775,254 @@ function drawFlames() {
   }
 
 
-  flameCtx.globalAlpha = 1;
-}
+  /*
+     Black flame silhouettes.
+  */
+
+  flameCtx.fillStyle =
+    "rgba(0,0,0,0.28)";
 
 
-/* ============================================================
-   CROW FEATHERS
-   ============================================================ */
+  for (let i = 0; i < 12; i++) {
 
-const feathers = [];
+    const x =
+      i *
+      (window.innerWidth / 11);
 
-
-function createFeather() {
-
-  return {
-    x: Math.random() * window.innerWidth,
-
-    y:
-      -50 -
-      Math.random() * window.innerHeight,
-
-    size:
-      5 +
-      Math.random() * 12,
-
-    speed:
-      0.4 +
-      Math.random() * 1,
-
-    rotation:
-      Math.random() * Math.PI,
-
-    rotationSpeed:
-      (Math.random() - 0.5) * 0.02,
-
-    opacity:
-      0.15 +
-      Math.random() * 0.35
-  };
-}
+    const h =
+      30 +
+      Math.sin(
+        time * 0.002 + i
+      ) * 20;
 
 
-function initializeFeathers() {
+    flameCtx.beginPath();
 
-  feathers.length = 0;
+    flameCtx.moveTo(
+      x - 25,
+      window.innerHeight
+    );
 
-  for (let i = 0; i < 18; i++) {
-    feathers.push(createFeather());
+    flameCtx.quadraticCurveTo(
+      x - 5,
+      window.innerHeight - h,
+      x + 5,
+      window.innerHeight
+    );
+
+    flameCtx.fill();
   }
 }
 
 
-function drawFeathers() {
+/* ============================================================
+   CROWS
+   ============================================================ */
+
+const crows = [];
+
+
+function createCrow() {
+
+  return {
+
+    x:
+      -100 -
+      Math.random() * 300,
+
+    y:
+      80 +
+      Math.random() *
+      window.innerHeight * 0.65,
+
+    scale:
+      0.5 +
+      Math.random() * 0.7,
+
+    speed:
+      0.5 +
+      Math.random() * 1.1,
+
+    flap:
+      Math.random() * Math.PI * 2,
+
+    opacity:
+      0.45 +
+      Math.random() * 0.4
+  };
+}
+
+
+function initializeCrows() {
+
+  crows.length = 0;
+
+  for (let i = 0; i < 7; i++) {
+
+    const crow =
+      createCrow();
+
+    crow.x =
+      Math.random() *
+      window.innerWidth;
+
+    crows.push(crow);
+  }
+}
+
+
+function drawCrow(
+  ctx,
+  crow,
+  time
+) {
+
+  const wing =
+    Math.sin(
+      time * 0.012 +
+      crow.flap
+    ) * 8;
+
+
+  ctx.save();
+
+  ctx.translate(
+    crow.x,
+    crow.y
+  );
+
+  ctx.scale(
+    crow.scale,
+    crow.scale
+  );
+
+  ctx.globalAlpha =
+    crow.opacity;
+
+  ctx.fillStyle =
+    "rgba(0,0,0,0.9)";
+
+
+  /*
+     Body.
+  */
+
+  ctx.beginPath();
+
+  ctx.ellipse(
+    0,
+    0,
+    16,
+    7,
+    0,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+
+  /*
+     Left wing.
+  */
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    -5,
+    0
+  );
+
+  ctx.quadraticCurveTo(
+    -30,
+    -20 - wing,
+    -48,
+    2
+  );
+
+  ctx.quadraticCurveTo(
+    -25,
+    -4,
+    -5,
+    4
+  );
+
+  ctx.fill();
+
+
+  /*
+     Right wing.
+  */
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    5,
+    0
+  );
+
+  ctx.quadraticCurveTo(
+    30,
+    -20 + wing,
+    48,
+    2
+  );
+
+  ctx.quadraticCurveTo(
+    25,
+    -4,
+    5,
+    4
+  );
+
+  ctx.fill();
+
+
+  /*
+     Head + beak.
+  */
+
+  ctx.beginPath();
+
+  ctx.arc(
+    14,
+    -4,
+    6,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    19,
+    -4
+  );
+
+  ctx.lineTo(
+    28,
+    0
+  );
+
+  ctx.lineTo(
+    19,
+    2
+  );
+
+  ctx.fill();
+
+
+  ctx.restore();
+}
+
+
+function updateCrows(time) {
 
   if (!featherCtx) return;
+
 
   featherCtx.clearRect(
     0,
@@ -752,66 +1032,189 @@ function drawFeathers() {
   );
 
 
-  for (const feather of feathers) {
+  for (const crow of crows) {
 
-    feather.y += feather.speed;
+    crow.x +=
+      crow.speed;
 
-    feather.x +=
+
+    crow.y +=
       Math.sin(
-        feather.y * 0.01
+        time * 0.001 +
+        crow.flap
       ) * 0.25;
-
-    feather.rotation +=
-      feather.rotationSpeed;
 
 
     if (
-      feather.y >
-      window.innerHeight + 50
+      crow.x >
+      window.innerWidth + 120
     ) {
 
-      feather.y = -50;
+      crow.x = -120;
 
-      feather.x =
+      crow.y =
+        60 +
         Math.random() *
-        window.innerWidth;
+        window.innerHeight *
+        0.7;
     }
 
 
-    featherCtx.save();
-
-    featherCtx.translate(
-      feather.x,
-      feather.y
+    drawCrow(
+      featherCtx,
+      crow,
+      time
     );
-
-    featherCtx.rotate(
-      feather.rotation
-    );
-
-    featherCtx.globalAlpha =
-      feather.opacity;
-
-    featherCtx.fillStyle =
-      "rgba(0,0,0,0.8)";
-
-
-    featherCtx.beginPath();
-
-    featherCtx.ellipse(
-      0,
-      0,
-      feather.size * 0.35,
-      feather.size,
-      0,
-      0,
-      Math.PI * 2
-    );
-
-    featherCtx.fill();
-
-    featherCtx.restore();
   }
+}
+
+
+/* ============================================================
+   LIGHTNING
+   ============================================================ */
+
+function drawLightning() {
+
+  if (!mainCtx) return;
+
+  if (lightning <= 0) return;
+
+
+  mainCtx.save();
+
+  mainCtx.globalAlpha =
+    lightning * 0.55;
+
+  mainCtx.fillStyle =
+    "rgba(255,255,255,0.18)";
+
+  mainCtx.fillRect(
+    0,
+    0,
+    window.innerWidth,
+    window.innerHeight
+  );
+
+
+  /*
+     Red lightning streak.
+  */
+
+  mainCtx.strokeStyle =
+    "rgba(180,0,0,0.9)";
+
+  mainCtx.lineWidth = 2;
+
+  mainCtx.beginPath();
+
+
+  let x =
+    window.innerWidth *
+    (0.25 +
+     Math.random() * 0.5);
+
+  let y = 0;
+
+
+  mainCtx.moveTo(
+    x,
+    y
+  );
+
+
+  for (let i = 0; i < 7; i++) {
+
+    x +=
+      (Math.random() - 0.5) *
+      80;
+
+    y +=
+      window.innerHeight / 7;
+
+    mainCtx.lineTo(
+      x,
+      y
+    );
+  }
+
+
+  mainCtx.stroke();
+
+  mainCtx.restore();
+
+
+  lightning *= 0.82;
+}
+
+
+/* ============================================================
+   RANDOM THUNDER
+   ============================================================ */
+
+function updateLightning(time) {
+
+  if (
+    time - lightningTimer >
+    5000 +
+    Math.random() * 7000
+  ) {
+
+    lightning = 1;
+
+    lightningTimer =
+      time;
+  }
+}
+
+
+/* ============================================================
+   VIGNETTE
+   ============================================================ */
+
+function drawVignette() {
+
+  if (!mainCtx) return;
+
+
+  const gradient =
+    mainCtx.createRadialGradient(
+      window.innerWidth / 2,
+      window.innerHeight / 2,
+      window.innerHeight * 0.2,
+      window.innerWidth / 2,
+      window.innerHeight / 2,
+      Math.max(
+        window.innerWidth,
+        window.innerHeight
+      ) * 0.75
+    );
+
+
+  gradient.addColorStop(
+    0,
+    "rgba(0,0,0,0)"
+  );
+
+  gradient.addColorStop(
+    0.65,
+    "rgba(0,0,0,0.05)"
+  );
+
+  gradient.addColorStop(
+    1,
+    "rgba(0,0,0,0.7)"
+  );
+
+
+  mainCtx.fillStyle =
+    gradient;
+
+  mainCtx.fillRect(
+    0,
+    0,
+    window.innerWidth,
+    window.innerHeight
+  );
 }
 
 
@@ -819,14 +1222,12 @@ function drawFeathers() {
    MUSIC
    ============================================================ */
 
-let musicStarted = false;
-
-
 function startMusic() {
 
   if (!bgMusic) return;
 
   bgMusic.volume = 0.55;
+
 
   const promise =
     bgMusic.play();
@@ -835,7 +1236,7 @@ function startMusic() {
   if (promise) {
 
     promise
-      .then(function () {
+      .then(() => {
 
         musicStarted = true;
 
@@ -845,14 +1246,10 @@ function startMusic() {
         }
 
       })
-      .catch(function () {
+      .catch(() => {
 
         musicStarted = false;
 
-        if (soundToggle) {
-          soundToggle.textContent =
-            "SOUND";
-        }
       });
   }
 }
@@ -862,7 +1259,7 @@ if (soundToggle) {
 
   soundToggle.addEventListener(
     "click",
-    function () {
+    () => {
 
       if (!bgMusic) return;
 
@@ -885,11 +1282,6 @@ if (soundToggle) {
 }
 
 
-/*
-   Browsers often block autoplay.
-   Start music on the first user interaction.
-*/
-
 function unlockAudio() {
 
   if (!musicStarted) {
@@ -902,12 +1294,12 @@ function unlockAudio() {
   );
 
   window.removeEventListener(
-    "touchstart",
+    "keydown",
     unlockAudio
   );
 
   window.removeEventListener(
-    "keydown",
+    "touchstart",
     unlockAudio
   );
 }
@@ -919,21 +1311,26 @@ window.addEventListener(
 );
 
 window.addEventListener(
-  "touchstart",
+  "keydown",
   unlockAudio
 );
 
 window.addEventListener(
-  "keydown",
+  "touchstart",
   unlockAudio
 );
 
 
 /* ============================================================
-   MAIN ANIMATION LOOP
+   ANIMATION LOOP
    ============================================================ */
 
-function animationLoop() {
+function animationLoop(time) {
+
+  if (!lastTime) {
+    lastTime = time;
+  }
+
 
   updateScroll();
 
@@ -943,9 +1340,18 @@ function animationLoop() {
 
   drawEyes();
 
-  drawFlames();
+  drawRedFog(time);
 
-  drawFeathers();
+  updateCrows(time);
+
+  updateLightning(time);
+
+  drawLightning();
+
+  drawVignette();
+
+
+  lastTime = time;
 
   requestAnimationFrame(
     animationLoop
@@ -954,59 +1360,39 @@ function animationLoop() {
 
 
 /* ============================================================
-   START WEBSITE
+   START
    ============================================================ */
 
 function startSite() {
 
-  if (animationStarted) {
-    return;
-  }
+  if (animationStarted) return;
 
   animationStarted = true;
 
   resizeAll();
 
-  currentFrame = 0;
-  targetFrame = 0;
+  initializeFog();
 
-  drawMainFrame();
-  drawEyes();
-
-  initializeFlames();
-  initializeFeathers();
+  initializeCrows();
 
   scheduleBlink();
 
-  /*
-     Hide loader.
-  */
+  drawMainFrame();
+
 
   if (loader) {
+
     loader.classList.add("hide");
 
-    /*
-       Extra protection in case CSS
-       does not hide the loader.
-    */
-
-    loader.style.display = "none";
+    loader.style.display =
+      "none";
   }
 
 
-  animationLoop();
+  requestAnimationFrame(
+    animationLoop
+  );
 }
-
-
-/* ============================================================
-   SCROLL LISTENER
-   ============================================================ */
-
-window.addEventListener(
-  "scroll",
-  updateScroll,
-  { passive: true }
-);
 
 
 /* ============================================================
