@@ -1,71 +1,801 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #030305; color: #fff; font-family: "Segoe UI", Arial, sans-serif; overflow-x: hidden; }
-canvas { display: block; width: 100%; height: 100%; }
+/* =========================================================
+   ITACHI UCHIHA — COMPLETE STYLESHEET
+   ========================================================= */
 
-/* ---------- Loader ---------- */
+
+/* =========================================================
+   RESET
+   ========================================================= */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+
+html {
+  width: 100%;
+  min-height: 100%;
+  background: #000;
+  scroll-behavior: auto;
+}
+
+
+body {
+  width: 100%;
+  min-height: 100%;
+  background: #000;
+  color: #fff;
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+  overflow-x: hidden;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+
+
+::-webkit-scrollbar-thumb {
+  background: #4d050a;
+}
+
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8b1018;
+}
+
+
+/* =========================================================
+   LOADING SCREEN
+   ========================================================= */
+
 #loader {
-  position: fixed; inset: 0; background: #000;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  letter-spacing: 4px; z-index: 500; transition: opacity .8s;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  background:
+    radial-gradient(
+      circle at center,
+      #170308 0%,
+      #050505 45%,
+      #000 100%
+    );
+
+  transition:
+    opacity 0.8s ease,
+    visibility 0.8s ease;
 }
-#loader.hide { opacity: 0; pointer-events: none; }
-.bar { width: 240px; height: 3px; background: #222; margin-top: 16px; }
-#loaderFill { display: block; height: 100%; width: 0; background: #c1121f; box-shadow: 0 0 10px #c1121f; }
 
-/* ---------- Act 1 ---------- */
-#scrub { height: 600vh; position: relative; }
-.sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
 
-/* ---------- Captions (fixed layer, above the flames) ---------- */
-#captions { position: fixed; inset: 0; z-index: 20; pointer-events: none; opacity: 0; transition: opacity .5s; }
-#captions.show { opacity: 1; }
+#loader p {
+  margin-bottom: 14px;
+
+  color: rgba(255, 255, 255, 0.8);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 10px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+}
+
+
+#loaderPct {
+  color: #c8102e;
+}
+
+
+.bar {
+  width: min(260px, 55vw);
+  height: 2px;
+
+  overflow: hidden;
+
+  background: rgba(255, 255, 255, 0.12);
+}
+
+
+#loaderFill {
+  display: block;
+
+  width: 0%;
+  height: 100%;
+
+  background:
+    linear-gradient(
+      90deg,
+      #4d050a,
+      #c8102e,
+      #ff3148
+    );
+
+  box-shadow:
+    0 0 12px rgba(200, 16, 46, 0.8);
+
+  transition: width 0.15s ease;
+}
+
+
+/* =========================================================
+   MAIN SCROLL SECTION
+   ========================================================= */
+
+#scrub {
+  position: relative;
+
+  width: 100%;
+  height: 500vh;
+
+  background: #000;
+}
+
+
+.sticky {
+  position: sticky;
+
+  top: 0;
+
+  width: 100%;
+  height: 100vh;
+
+  overflow: hidden;
+
+  background: #000;
+}
+
+
+/* =========================================================
+   MAIN ITACHI CANVAS
+   ========================================================= */
+
+#mainCanvas {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  background: #000;
+
+  /*
+    Important:
+    The canvas itself does not zoom.
+    JavaScript controls the frame animation.
+  */
+
+  transform: none;
+
+  image-rendering: auto;
+}
+
+
+/* =========================================================
+   DARK / RED ATMOSPHERIC OVERLAY
+   ========================================================= */
+
+#scrub::after {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  pointer-events: none;
+
+  z-index: 3;
+
+  background:
+    radial-gradient(
+      ellipse at center,
+      transparent 30%,
+      rgba(0, 0, 0, 0.18) 55%,
+      rgba(0, 0, 0, 0.75) 100%
+    );
+
+  mix-blend-mode: multiply;
+}
+
+
+/* =========================================================
+   VIGNETTE
+   ========================================================= */
+
+.sticky::after {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      ellipse at center,
+      transparent 42%,
+      rgba(0, 0, 0, 0.25) 65%,
+      rgba(0, 0, 0, 0.85) 100%
+    );
+
+  z-index: 5;
+}
+
+
+/* =========================================================
+   CAPTIONS
+   ========================================================= */
+
+#captions {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 20;
+
+  pointer-events: none;
+}
+
+
 .phase {
-  position: absolute; left: 50%; bottom: 9%;
-  transform: translate(-50%, 20px); text-align: center; width: 90%;
-  opacity: 0; transition: opacity .7s, transform .7s;
-  text-shadow: 0 0 24px #000, 0 0 8px #000;
-}
-.phase.active { opacity: 1; transform: translate(-50%, 0); }
-.phase h1, .phase h2 { font-size: clamp(2.5rem, 7vw, 5rem); letter-spacing: 8px; }
-.phase p { letter-spacing: 8px; color: #e01e2f; margin-top: 6px; }
+  position: absolute;
 
-/* ---------- Act 2 ---------- */
-#eyes { position: relative; height: 100vh; overflow: hidden; }
+  top: 50%;
+  left: 50%;
+
+  width: 90%;
+
+  transform:
+    translate(-50%, -50%);
+
+  text-align: center;
+
+  opacity: 0;
+
+  transition:
+    opacity 0.8s ease,
+    transform 0.8s ease;
+}
+
+
+.phase h1,
+.phase h2 {
+  margin: 0;
+
+  color: #fff;
+
+  font-weight: 400;
+
+  text-shadow:
+    0 0 8px rgba(255, 255, 255, 0.15),
+    0 0 30px rgba(130, 0, 15, 0.35);
+}
+
+
+.phase h1 {
+  font-size: clamp(48px, 9vw, 110px);
+
+  letter-spacing: 12px;
+}
+
+
+.phase h2 {
+  font-size: clamp(38px, 7vw, 85px);
+
+  letter-spacing: 10px;
+}
+
+
+.phase p {
+  margin-top: 15px;
+
+  color: rgba(255, 255, 255, 0.72);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 11px;
+
+  letter-spacing: 7px;
+
+  text-transform: uppercase;
+}
+
+
+/* =========================================================
+   CREATOR CREDIT
+   ========================================================= */
+
+.phase:first-child .creator {
+  margin-top: 8px;
+
+  color: rgba(255, 255, 255, 0.7);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 11px;
+
+  letter-spacing: 3px;
+
+  font-weight: 400;
+
+  opacity: 0.75;
+
+  text-transform: uppercase;
+}
+
+
+/* =========================================================
+   EYES SECTION
+   ========================================================= */
+
+#eyes {
+  position: relative;
+
+  width: 100%;
+  height: 100vh;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at center,
+      #160207 0%,
+      #050000 45%,
+      #000 100%
+    );
+}
+
+
+#eyeCanvas {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  z-index: 1;
+
+  background: transparent;
+}
+
+
+#eyes::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 2;
+
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      ellipse at center,
+      transparent 20%,
+      rgba(0, 0, 0, 0.5) 65%,
+      rgba(0, 0, 0, 0.95) 100%
+    );
+}
+
+
 .eyes-copy {
-  position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); z-index: 20;
-  text-align: center; text-shadow: 0 0 24px #000; pointer-events: none; width: 90%;
-}
-.eyes-copy h2 { font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: 6px; }
-.eyes-copy p { color: #e01e2f; letter-spacing: 4px; }
+  position: absolute;
 
-/* ---------- Effect layers ---------- */
-#flameCanvas, #featherCanvas {
-  position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none;
-}
-#flameCanvas   { z-index: 8; }
-#featherCanvas { z-index: 9; }
+  left: 50%;
+  bottom: 12%;
 
-/* ---------- Sound toggle ---------- */
+  transform:
+    translateX(-50%);
+
+  z-index: 5;
+
+  text-align: center;
+
+  pointer-events: none;
+}
+
+
+.eyes-copy h2 {
+  color: #fff;
+
+  font-size: clamp(25px, 4vw, 45px);
+
+  font-weight: 400;
+
+  letter-spacing: 8px;
+
+  text-shadow:
+    0 0 20px rgba(150, 0, 15, 0.6);
+}
+
+
+.eyes-copy p {
+  margin-top: 10px;
+
+  color: rgba(255, 255, 255, 0.5);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 10px;
+
+  letter-spacing: 4px;
+
+  text-transform: uppercase;
+}
+
+
+/* =========================================================
+   BLACK FLAMES
+   ========================================================= */
+
+#flameCanvas {
+  position: fixed;
+
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  z-index: 8;
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   FEATHERS / CROWS
+   ========================================================= */
+
+#featherCanvas {
+  position: fixed;
+
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  z-index: 9;
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   MUSIC BUTTON
+   ========================================================= */
+
 #soundToggle {
-  position: fixed; top: 18px; right: 18px; z-index: 200;
-  background: rgba(0,0,0,.55); color: #fff; border: 1px solid rgba(224,30,47,.6);
-  padding: 8px 14px; letter-spacing: 3px; font-size: .72rem; cursor: pointer;
-  backdrop-filter: blur(6px); transition: box-shadow .25s, background .25s;
+  position: fixed;
+
+  right: 25px;
+  bottom: 25px;
+
+  z-index: 100;
+
+  min-width: 120px;
+
+  padding: 10px 14px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 9px;
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+
+  border-radius: 2px;
+
+  background:
+    rgba(0, 0, 0, 0.55);
+
+  color: rgba(255, 255, 255, 0.75);
+
+  backdrop-filter:
+    blur(8px);
+
+  -webkit-backdrop-filter:
+    blur(8px);
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease,
+    color 0.3s ease,
+    box-shadow 0.3s ease;
 }
-#soundToggle .jp { color: #e01e2f; font-size: 1rem; margin-right: 4px; }
-#soundToggle:hover { box-shadow: 0 0 14px rgba(224,30,47,.7); }
-#soundToggle[aria-pressed="true"] { background: rgba(120,5,16,.6); box-shadow: 0 0 14px rgba(224,30,47,.5); }
 
-/* ---------- Custom cursor (desktop only) ---------- */
-#cursor, #cursorDot { position: fixed; left: 0; top: 0; z-index: 1000; pointer-events: none; opacity: 0; transition: opacity .3s; }
-#cursor { width: 46px; height: 46px; margin: -23px 0 0 -23px; }
-#cursor svg { width: 100%; height: 100%; animation: spin 3.2s linear infinite; filter: drop-shadow(0 0 6px rgba(224,30,47,.8)); }
-#cursor .inner { transition: transform .2s; }
-#cursorDot { width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px #e01e2f, 0 0 2px #fff; }
-body.cursor-on #cursor, body.cursor-on #cursorDot { opacity: 1; }
-#cursor.big svg { animation-duration: .9s; }
-@keyframes spin { to { transform: rotate(360deg); } }
-@media (hover: hover) and (pointer: fine) { html, body, a, button { cursor: none !important; } }
-@media (hover: none), (pointer: coarse) { #cursor, #cursorDot { display: none; } }
 
-@media (prefers-reduced-motion: reduce) { #cursor svg { animation: none; } }
+#soundToggle:hover {
+  border-color: rgba(190, 10, 30, 0.8);
+
+  background:
+    rgba(40, 0, 5, 0.7);
+
+  color: #fff;
+
+  box-shadow:
+    0 0 20px rgba(150, 0, 20, 0.25);
+}
+
+
+#soundToggle .jp {
+  color: #b90d24;
+
+  font-size: 16px;
+
+  line-height: 1;
+}
+
+
+#soundState {
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 8px;
+
+  letter-spacing: 2px;
+}
+
+
+/* =========================================================
+   CUSTOM SHARINGAN CURSOR
+   ========================================================= */
+
+#cursor {
+  position: fixed;
+
+  left: 0;
+  top: 0;
+
+  width: 42px;
+  height: 42px;
+
+  z-index: 1000;
+
+  pointer-events: none;
+
+  transform:
+    translate(-50%, -50%);
+
+  opacity: 0.9;
+
+  filter:
+    drop-shadow(
+      0 0 8px rgba(170, 0, 25, 0.55)
+    );
+
+  transition:
+    opacity 0.25s ease;
+}
+
+
+#cursor svg {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+}
+
+
+#cursorDot {
+  position: fixed;
+
+  left: 0;
+  top: 0;
+
+  width: 4px;
+  height: 4px;
+
+  z-index: 1001;
+
+  pointer-events: none;
+
+  transform:
+    translate(-50%, -50%);
+
+  border-radius: 50%;
+
+  background: #ff1a35;
+
+  box-shadow:
+    0 0 8px #ff1a35,
+    0 0 18px rgba(255, 0, 30, 0.65);
+}
+
+
+/* =========================================================
+   MOUSE HOVER STATE
+   ========================================================= */
+
+body:hover #cursor {
+  opacity: 1;
+}
+
+
+/* =========================================================
+   SELECTION
+   ========================================================= */
+
+::selection {
+  color: #fff;
+
+  background:
+    rgba(130, 0, 15, 0.8);
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+  #scrub {
+    height: 450vh;
+  }
+
+
+  .phase h1 {
+    font-size: clamp(42px, 13vw, 75px);
+
+    letter-spacing: 8px;
+  }
+
+
+  .phase h2 {
+    font-size: clamp(32px, 10vw, 60px);
+
+    letter-spacing: 6px;
+  }
+
+
+  .phase p {
+    font-size: 9px;
+
+    letter-spacing: 4px;
+  }
+
+
+  .phase:first-child .creator {
+    font-size: 9px;
+
+    letter-spacing: 2px;
+  }
+
+
+  #soundToggle {
+    right: 15px;
+    bottom: 15px;
+
+    min-width: 105px;
+
+    padding: 9px 10px;
+  }
+
+
+  #cursor,
+  #cursorDot {
+    display: none;
+  }
+
+
+  .eyes-copy {
+    bottom: 10%;
+  }
+
+
+  .eyes-copy h2 {
+    font-size: 25px;
+
+    letter-spacing: 5px;
+  }
+
+}
+
+
+/* =========================================================
+   VERY SMALL SCREENS
+   ========================================================= */
+
+@media (max-width: 480px) {
+
+  #scrub {
+    height: 400vh;
+  }
+
+
+  .phase h1 {
+    font-size: 44px;
+
+    letter-spacing: 6px;
+  }
+
+
+  .phase h2 {
+    font-size: 34px;
+
+    letter-spacing: 5px;
+  }
+
+
+  .phase:first-child .creator {
+    font-size: 8px;
+
+    letter-spacing: 1.8px;
+  }
+
+
+  .eyes-copy h2 {
+    font-size: 22px;
+
+    letter-spacing: 4px;
+  }
+
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  html {
+    scroll-behavior: auto;
+  }
+
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+}
